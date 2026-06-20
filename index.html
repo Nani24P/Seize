@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#061008" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Verdant Siege" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="apple-touch-icon" href="assets/icon-192.png" />
+    <title>Verdant Siege</title>
+    <link rel="stylesheet" href="src/styles.css?v=1-0" />
+  </head>
+  <body>
+    <main id="game-shell">
+      <div id="game-container" aria-label="Verdant Siege game canvas"></div>
+      <div id="status" role="status" aria-live="polite" class="boot-status">
+        <b>Verdant Siege</b>
+        <span>Loading jungle…</span>
+      </div>
+    </main>
+
+    <script>
+      const statusEl = document.getElementById("status");
+      function showStatus(title, msg, err = false) {
+        statusEl.className = `boot-status${err ? " error" : ""}`;
+        statusEl.innerHTML = `<b>${title}</b><span>${msg}</span>`;
+      }
+      function hideStatus() { statusEl.classList.add("hidden"); }
+      window.__VS_BOOT = { showStatus, hideStatus };
+
+      window.addEventListener("error", (e) => {
+        showStatus("Failed to start", e.message || "Unknown error. Check DevTools.", true);
+      });
+      window.addEventListener("unhandledrejection", (e) => {
+        showStatus("Failed to start", e.reason?.message || String(e.reason), true);
+      });
+
+      function loadScript(src) {
+        return new Promise((res, rej) => {
+          const s = document.createElement("script");
+          s.src = src; s.async = true;
+          s.onload = res;
+          s.onerror = () => rej(new Error(`Could not load ${src}`));
+          document.head.appendChild(s);
+        });
+      }
+
+      async function boot() {
+        const sources = [
+          "./lib/phaser.min.js",
+          "https://cdnjs.cloudflare.com/ajax/libs/phaser/3.90.0/phaser.min.js",
+          "https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js",
+          "https://unpkg.com/phaser@3.90.0/dist/phaser.min.js",
+        ];
+        let lastErr = null;
+        for (const src of sources) {
+          try {
+            showStatus("Loading engine", src.replace(/^https?:\/\//, ""));
+            await loadScript(src);
+            if (window.Phaser) break;
+          } catch (e) { lastErr = e; }
+        }
+        if (!window.Phaser) throw lastErr || new Error("Phaser failed to load.");
+        showStatus("Starting", "Entering the jungle…");
+        await import("./src/main.js?v=1-0");
+      }
+
+      boot().catch((e) => {
+        console.error(e);
+        showStatus(
+          "Engine failed",
+          "Add lib/phaser.min.js for offline play, or allow CDN access.",
+          true
+        );
+      });
+    </script>
+  </body>
+</html>
